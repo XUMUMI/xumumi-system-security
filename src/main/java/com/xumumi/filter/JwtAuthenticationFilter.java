@@ -28,7 +28,7 @@ import java.util.function.Function;
  *
  * @author XUMUMI
  * @see com.xumumi.config.BaseJwtSecurityConfigurerAdapter
- * @since 1.0
+ * @since 1.9
  */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
@@ -45,9 +45,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final Function<HttpServletRequest, String> secret;
     /**
      * 构造函数
-     * @param secret 密钥构造函数
+     * @param secret 密钥构造函数，不允许为 null，函数返回值必须为一个非 null 的 String，建议长度至少为 256 个字符
      */
-    public JwtAuthenticationFilter(Function<HttpServletRequest, String> secret) {
+    public JwtAuthenticationFilter(@NonNull Function<HttpServletRequest, String> secret) {
         this.secret = secret;
     }
 

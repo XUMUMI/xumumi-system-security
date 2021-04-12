@@ -5,7 +5,7 @@ import javax.servlet.http.Cookie;
 /**
  * cookie 生成工具
  * @author XUMUMI
- * @since 1.0
+ * @since 1.9
  */
 public class CookieUtils {
     /**
@@ -25,6 +25,14 @@ public class CookieUtils {
         cookie.setMaxAge(expiry);
         return cookie;
     }
+
+    /**
+     * 生成 cookie，采用默认值
+     *
+     * @param cookieName cookie 名
+     * @param value cookie 内容
+     * @return cookie
+     */
     public static Cookie generateCookie(String cookieName, String value) {
         return generateCookie(cookieName, value, true, "/", 60 * 60 * 24 * 15);
     }

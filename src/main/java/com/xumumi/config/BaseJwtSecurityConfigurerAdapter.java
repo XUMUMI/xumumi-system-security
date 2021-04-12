@@ -1,7 +1,8 @@
 package com.xumumi.config;
 
-import com.xumumi.filter.JsonAuthenticationFilter;
+import com.xumumi.filter.AbstractJsonAuthenticationFilter;
 import com.xumumi.filter.JwtAuthenticationFilter;
+import com.xumumi.filter.JwtLoginFilter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -10,10 +11,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import java.io.Serializable;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -22,13 +21,16 @@ import java.util.function.Function;
  * 安全过滤器配置
  * 该类实现了常用功能
  * 可以直接通过继承此类并加上 {@link org.springframework.security.config.annotation.web.configuration.EnableWebSecurity} 来实现最基础的配置
- * 也可以自行改用 {@link com.xumumi.filter.JsonAuthenticationFilter} 和 {@link com.xumumi.filter.JwtAuthenticationFilter} 然后自行配置
+ * 也可以自行改用 {@link AbstractJsonAuthenticationFilter} 和 {@link com.xumumi.filter.JwtAuthenticationFilter} 然后自行配置
  * 如果继承此类后需要自定义细节可以通过实行 {@link #configure(Config)} 进行配置，为了避免冲突，{@link #configure(HttpSecurity)} 不允许被重写
  *
  * @author XUMUMI
- * @since 1.0
+ * @since 1.9
  */
 public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
+    /**
+     * 用于配置的嵌套设置类
+     */
     @SuppressWarnings({"unused", "UnusedReturnValue"})
     protected static class Config {
         /* 路径 */
@@ -40,38 +42,30 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         /* cookie */
         private String tokenName;
         /* 记住我功能 */
-        private String rmbMeParam;
-        private String rmbMeValue;
-        private long rmbMeExpireTime;
+        private String rmbParameter;
+        private String rmbValue;
+        private long rmbExpireTime;
+        private long defaultExpireTime;
         /* 权限 */
         private String[] permitAll;
         private String[] authentication;
         private Map<Serializable, Serializable> roleRightsMap = Map.of();
         /* 回调函数 */
-        private JsonAuthenticationFilter.Result<Authentication> success;
-        private JsonAuthenticationFilter.Result<AuthenticationException> failure;
-        private Function<Authentication, List<Cookie>> cookies;
+        private JwtLoginFilter.ResultCallback<Authentication> success;
+        private JwtLoginFilter.ResultCallback<AuthenticationException> failure;
+        private JwtLoginFilter.CookiesCallback cookiesCallback;
         private Function<Authentication, Map<String, String>> claim;
-        private JsonAuthenticationFilter.Guard guard;
-        private Function<HttpServletRequest, String> secret = Object::toString;
+        private JwtLoginFilter.GuardCallback guardCallback;
+        private Function<HttpServletRequest, String> secret = e -> e.getSession().getId();
 
-        /**
-         * 自定义登录页
-         *
-         * @param loginProcessingUrl 登录页地址
-         * @return 返回 config 对象本身以供链式设置
-         */
-        Config loginProcessingUrl(String loginProcessingUrl) {
-            this.loginProcessingUrl = Objects.requireNonNull(loginProcessingUrl);
-            return this;
-        }
+        /* 字段 */
 
         /**
          * 自定义用户名字段
          *
          * @param usernameParameter 用户名的字段名
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#usernameParameter(String)
+         * @see JwtLoginFilter#usernameParameter(String)
          */
         Config usernameParameter(String usernameParameter) {
             this.usernameParameter = usernameParameter;
@@ -83,7 +77,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
          *
          * @param passwordParameter 密码的字段名
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#passwordParameter(String)
+         * @see JwtLoginFilter#passwordParameter(String)
          */
         Config passwordParameter(String passwordParameter) {
             this.passwordParameter = passwordParameter;
@@ -101,6 +95,21 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
             this.roleParameter = roleParameter;
             return this;
         }
+
+
+        /**
+         * 自定义记住我字段
+         *
+         * @param rmbParam 字段名
+         * @return 返回 config 对象本身以供链式设置
+         * @see JwtLoginFilter#rmbParameter(String)
+         */
+        Config rmbParam(String rmbParam) {
+            rmbParameter = rmbParam;
+            return this;
+        }
+
+        /* 权限 */
 
         /**
          * 自定义无需授权页面
@@ -135,14 +144,18 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
             return this;
         }
 
+        /* 回调 */
+
         /**
          * 自定义登录成功回调函数
          *
-         * @param success 处理  {@link org.springframework.security.core.Authentication} 并返回一个可序列化对象的回调函数
+         * @param success 处理 {@link org.springframework.security.core.Authentication} 并返回一个可序列化对象的回调函数
+         *                该回调函数原型如下 Object success(String path, Authentication authResult)
+         *                传入的是调用页面和认证信息，返回一个可序列化的对象
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#success(JsonAuthenticationFilter.Result)
+         * @see JwtLoginFilter#success(JwtLoginFilter.ResultCallback)
          */
-        Config success(JsonAuthenticationFilter.Result<Authentication> success) {
+        Config success(JwtLoginFilter.ResultCallback<Authentication> success) {
             this.success = success;
             return this;
         }
@@ -151,59 +164,25 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
          * 自定义登录失败回调函数
          *
          * @param failure 处理  {@link org.springframework.security.core.AuthenticationException} 并返回一个可序列化对象的回调函数
+         *                该回调函数原型如下 Object failure(String path, AuthenticationException exception)
+         *                传入的是调用页面和错误细节，返回一个可序列化对象
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#failure(JsonAuthenticationFilter.Result)
+         * @see JwtLoginFilter#failure(JwtLoginFilter.ResultCallback)
          */
-        Config failure(JsonAuthenticationFilter.Result<AuthenticationException> failure) {
+        Config failure(JwtLoginFilter.ResultCallback<AuthenticationException> failure) {
             this.failure = failure;
-            return this;
-        }
-
-        /**
-         * 自定义记住我字段
-         *
-         * @param rmbMeParam 字段名
-         * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter.RememberMe#parameter(String)
-         */
-        Config rmbMeParam(String rmbMeParam) {
-            this.rmbMeParam = rmbMeParam;
-            return this;
-        }
-
-        /**
-         * 自定义记住我为真的值
-         *
-         * @param rmbMeValue 字段值
-         * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter.RememberMe#value(String)
-         */
-        Config rmbMeValue(String rmbMeValue) {
-            this.rmbMeValue = rmbMeValue;
-            return this;
-        }
-
-        /**
-         * 自定义记住我的超时时长，默认为 7 天，最长不可超过 15 天
-         *
-         * @param rmbMeExpireTime 超时时长，单位毫秒
-         * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter.RememberMe#expireTime(long)
-         */
-        Config rmbMeExpireTime(long rmbMeExpireTime) {
-            this.rmbMeExpireTime = rmbMeExpireTime;
             return this;
         }
 
         /**
          * 自定义 cookies 回调函数
          *
-         * @param cookies 处理 {@link org.springframework.security.core.Authentication} 并返回一个 cookies 列表
+         * @param cookiesCallback 处理 {@link org.springframework.security.core.Authentication} 并返回一个 cookies 列表
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#cookies(Function)
+         * @see JwtLoginFilter#cookiesCallback(JwtLoginFilter.CookiesCallback)
          */
-        Config cookies(Function<Authentication, List<Cookie>> cookies) {
-            this.cookies = cookies;
+        Config cookies(JwtLoginFilter.CookiesCallback cookiesCallback) {
+            this.cookiesCallback = cookiesCallback;
             return this;
         }
 
@@ -212,7 +191,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
          *
          * @param claim 处理 {@link org.springframework.security.core.Authentication} 并返回一个 claim 信息列表
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#claim(Function)
+         * @see JwtLoginFilter#claim(Function)
          */
         Config claim(Function<Authentication, Map<String, String>> claim) {
             this.claim = claim;
@@ -222,12 +201,61 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         /**
          * 自定义登录守卫回调函数
          *
-         * @param guard 处理 用户标志及 {@link org.springframework.security.core.Authentication}，自行抛出异常
+         * @param guardCallback 处理 用户标志及 {@link org.springframework.security.core.Authentication}，自行抛出异常
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#guard(JsonAuthenticationFilter.Guard)
+         * @see JwtLoginFilter#guard(JwtLoginFilter.GuardCallback)
          */
-        Config guard(JsonAuthenticationFilter.Guard guard) {
-            this.guard = guard;
+        Config guard(JwtLoginFilter.GuardCallback guardCallback) {
+            this.guardCallback = guardCallback;
+            return this;
+        }
+
+        /* 杂项 */
+
+        /**
+         * 自定义登录页
+         *
+         * @param loginProcessingUrl 登录页地址
+         * @return 返回 config 对象本身以供链式设置
+         */
+        Config loginProcessingUrl(String loginProcessingUrl) {
+            this.loginProcessingUrl = Objects.requireNonNull(loginProcessingUrl);
+            return this;
+        }
+
+        /**
+         * 自定义记住我的超时时长，默认为 7 天，最长不可超过 15 天
+         *
+         * @param rmbExpireTime 超时时长，单位毫秒
+         * @return 返回 config 对象本身以供链式设置
+         * @see JwtLoginFilter#rmbExpireTime(long)
+         */
+        Config rmbExpireTime(long rmbExpireTime) {
+            this.rmbExpireTime = rmbExpireTime;
+            return this;
+        }
+
+        /**
+         * 自定义默认的超时时长，默认为 5 分钟，最长不可超过 15 天
+         *
+         * @param defaultExpireTime 超时时长，单位毫秒
+         * @return 返回 config 对象本身以供链式设置
+         * @see JwtLoginFilter#defaultExpireTime(long)
+         */
+        Config defaultExpireTime(long defaultExpireTime) {
+            this.defaultExpireTime = defaultExpireTime;
+            return this;
+        }
+
+        /**
+         * 自定义记住我为真的值
+         *
+         * @param rmbValue 字段值
+         * @return 返回 config 对象本身以供链式设置
+         * @see JwtLoginFilter#rmbValue(String)
+         */
+        Config rmbValue(String rmbValue) {
+            this.rmbValue = rmbValue;
             return this;
         }
 
@@ -236,7 +264,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
          *
          * @param tokenName token 名的字符串
          * @return 返回 config 对象本身以供链式设置
-         * @see JsonAuthenticationFilter#tokenName(String)
+         * @see JwtLoginFilter#tokenName(String)
          */
         Config tokenName(String tokenName) {
             this.tokenName = tokenName;
@@ -267,7 +295,6 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
      *
      * @param http 用于使用配置 http 信息
      * @throws Exception 重写异常
-     * @see org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter#configure(HttpSecurity)
      */
     @Override
     protected final void configure(HttpSecurity http) throws Exception {
@@ -297,22 +324,20 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         http.authorizeRequests().anyRequest().authenticated();
         /* 配置过滤器 */
         /* 配置 Json 登录过滤器 */
-        JsonAuthenticationFilter jsonFilter =
-                new JsonAuthenticationFilter(authenticationManager(), config.loginProcessingUrl, config.secret)
+        JwtLoginFilter jsonFilter =
+                new JwtLoginFilter(authenticationManager(), config.loginProcessingUrl, config.secret)
                         /* 回调函数 */
-                        .success(config.success).failure(config.failure).guard(config.guard)
-                        /* cookies */
-                        .tokenName(config.tokenName).cookies(config.cookies).claim(config.claim)
-                        /* 记住我 */
-                        .rememberMe()
-                        .parameter(config.rmbMeParam).value(config.rmbMeValue).expireTime(config.rmbMeExpireTime)
-                        .and()
+                        .success(config.success).failure(config.failure).guard(config.guardCallback)
                         /* 字段 */
-                        .usernameParameter(config.usernameParameter).passwordParameter(config.passwordParameter);
+                        .usernameParameter(config.usernameParameter).passwordParameter(config.passwordParameter)
+                        .roleParameter(config.roleParameter)
+                        /* cookies */
+                        .tokenName(config.tokenName).cookiesCallback(config.cookiesCallback).claim(config.claim)
+                        .rmbParameter(config.rmbParameter).rmbValue(config.rmbValue)
+                        .rmbExpireTime(config.rmbExpireTime).defaultExpireTime(config.defaultExpireTime);
         /* 配置 Jwt 请求过滤器 */
-        JwtAuthenticationFilter jwtFilter =
-                new JwtAuthenticationFilter(config.secret)
-                        .tokenName(config.tokenName).roleParameter(config.roleParameter);
+        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(config.secret)
+                .tokenName(config.tokenName).roleParameter(config.roleParameter);
         http
                 /* 登录过滤器 */
                 .addFilterAt(jsonFilter, UsernamePasswordAuthenticationFilter.class)
