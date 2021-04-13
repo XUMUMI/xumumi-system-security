@@ -7,33 +7,24 @@ import javax.servlet.http.Cookie;
  * @author XUMUMI
  * @since 1.9
  */
-public class CookieUtils {
+public enum CookieUtils {
+    /* 工具类 */;
+
     /**
      * 生成 cookie
      *
      * @param cookieName cookie 名
      * @param value cookie 内容
-     * @param httpOnly cookie 可见性
      * @param uri 可见路径
      * @param expiry 过期时间
      * @return cookie
      */
-    public static Cookie generateCookie(String cookieName, String value, boolean httpOnly, String uri, int expiry) {
-        Cookie cookie = new Cookie(cookieName, value);
-        cookie.setHttpOnly(httpOnly);
+    public static Cookie generateCookie(final String cookieName, final String value,
+                                        final String uri, final int expiry) {
+        final Cookie cookie = new Cookie(cookieName, value);
+        cookie.setHttpOnly(true);
         cookie.setPath(uri);
         cookie.setMaxAge(expiry);
         return cookie;
-    }
-
-    /**
-     * 生成 cookie，采用默认值
-     *
-     * @param cookieName cookie 名
-     * @param value cookie 内容
-     * @return cookie
-     */
-    public static Cookie generateCookie(String cookieName, String value) {
-        return generateCookie(cookieName, value, true, "/", 60 * 60 * 24 * 15);
     }
 }

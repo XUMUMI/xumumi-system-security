@@ -2,10 +2,13 @@ package com.xumumi.util;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
+import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.Claim;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.lang.NonNull;
 
 import java.util.Calendar;
@@ -18,21 +21,28 @@ import java.util.Map;
  * @author XUMUMI
  * @since 1.9
  */
-public class JwtUtils {
+public enum JwtUtils {
+    /* 工具类 */;
+
     /**
      * 验证令牌是否有效
      *
-     * @param token  令牌，不可为 null
-     * @param secret 密钥，不可为 null
+     * @param token  令牌
+     * @param secret 密钥
      * @return 有效布尔值
      */
-    public static boolean verify(@NonNull String token, @NonNull String secret) {
+    public static boolean isValid(final String token, final String secret) {
+        final Algorithm algorithm = Algorithm.HMAC256(secret);
+        final String subject = getSubject(token);
+        final JWTVerifier build = JWT.require(algorithm).withSubject(subject).build();
+        boolean result;
         try {
-            JWT.require(Algorithm.HMAC256(secret)).withSubject(getSubject(token)).build().verify(token);
-            return true;
-        } catch (JWTVerificationException exception) {
-            return false;
+            build.verify(token);
+            result = !isExpired(token);
+        } catch (final JWTVerificationException ignored) {
+            result = false;
         }
+        return result;
     }
 
     /**
@@ -41,8 +51,9 @@ public class JwtUtils {
      * @param token 令牌
      * @return 主体名
      */
-    public static String getSubject(@NonNull String token) {
-        return JWT.decode(token).getSubject();
+    public static String getSubject(final String token) {
+        final DecodedJWT decode = JWT.decode(token);
+        return decode.getSubject();
     }
 
     /**
@@ -52,12 +63,18 @@ public class JwtUtils {
      * @param name  信息名
      * @return 信息内容
      */
-    public static String getClaim(@NonNull String token, @NonNull String name) {
-        try {
-            return JWT.decode(token).getClaim(name).asString();
-        } catch (JWTDecodeException e) {
-            return null;
+    public static String getClaimValue(final String token, final String secret, final String name) {
+        String claimValue = null;
+        if (null != token && null != name && isValid(token, secret)) {
+            try {
+                final DecodedJWT decode = JWT.decode(token);
+                final Claim claim = decode.getClaim(name);
+                claimValue = claim.asString();
+            } catch (final JWTDecodeException e) {
+                claimValue = null;
+            }
         }
+        return claimValue;
     }
 
     /**
@@ -69,18 +86,21 @@ public class JwtUtils {
      * @param secret     密钥，不可为 null
      * @return token  令牌
      */
-    public static String sign(@NonNull String subject, Map<String, String> claim, long expireTime, @NonNull String secret) {
+    public static String sign(@NonNull final String subject, final Map<String, String> claim,
+                              final long expireTime, @NonNull final String secret) {
+        String token;
         try {
-            JWTCreator.Builder jwt = JWT.create();
-            if (claim != null) {
+            final JWTCreator.Builder jwt = JWT.create();
+            if (null != claim) {
                 claim.forEach(jwt::withClaim);
             }
-            return jwt.withSubject(subject)
-                    .withExpiresAt(new Date(System.currentTimeMillis() + expireTime))
-                    .sign(Algorithm.HMAC256(secret));
-        } catch (JWTCreationException e) {
-            return null;
+            final long currentTime = System.currentTimeMillis();
+            final Algorithm algorithm = Algorithm.HMAC256(secret);
+            token = jwt.withSubject(subject).withExpiresAt(new Date(currentTime + expireTime)).sign(algorithm);
+        } catch (final JWTCreationException e) {
+            token = null;
         }
+        return token;
     }
 
     /**
@@ -89,10 +109,10 @@ public class JwtUtils {
      * @param token 令牌
      * @return 是否过期布尔值
      */
-    public static boolean isExpired(String token) {
-        Date now = Calendar.getInstance().getTime();
-        return JWT.decode(token)
-                .getExpiresAt()
-                .before(now);
+    private static boolean isExpired(final String token) {
+        final Date now = Calendar.getInstance().getTime();
+        final DecodedJWT decode = JWT.decode(token);
+        final Date expiresAt = decode.getExpiresAt();
+        return expiresAt.before(now);
     }
 }
