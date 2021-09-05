@@ -63,6 +63,14 @@ public final class JwtLoginFilterImpl extends AbstractJsonAuthenticationFilter i
         secretCallback = secret;
     }
 
+    /**
+     *{@link JwtLoginFilter} 生成器
+     *
+     * @param manager            认证管理器
+     * @param loginProcessingUrl 登录页地址
+     * @param secret             用于生成密钥的回调函数
+     * @return {@link JwtLoginFilter} 对象
+     */
     public static JwtLoginFilter createJwtLoginFilter(final AuthenticationManager manager, final String loginProcessingUrl,
                                                           final Function<? super HttpServletRequest, String> secret) {
         return new JwtLoginFilterImpl(manager, loginProcessingUrl, secret);

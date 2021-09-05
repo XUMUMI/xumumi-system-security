@@ -59,8 +59,9 @@ public enum JwtUtils {
     /**
      * 获取令牌中的信息
      *
-     * @param token 令牌
-     * @param name  信息名
+     * @param token  令牌
+     * @param secret 用于加密的密钥字符串
+     * @param name   信息名
      * @return 信息内容
      */
     public static String getClaimValue(final String token, final String secret, final String name) {

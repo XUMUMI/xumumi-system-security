@@ -57,6 +57,12 @@ public final class JwtAuthenticationFilterImpl extends OncePerRequestFilter impl
         secretCallback = secret;
     }
 
+    /**
+     * {@link JwtAuthenticationFilter} 生成器
+     *
+     * @param secret 用于生成密钥的回调函数
+     * @return {@link JwtAuthenticationFilterImpl} 对象
+     */
     public static JwtAuthenticationFilter createJwtAuthenticationFilter(
             @NonNull final Function<? super HttpServletRequest, String> secret) {
         return new JwtAuthenticationFilterImpl(secret);
