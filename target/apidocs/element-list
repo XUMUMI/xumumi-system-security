@@ -1,8 +1,0 @@
-com.xumumi.configure
-com.xumumi.configure.config
-com.xumumi.configure.config.impl
-com.xumumi.filter
-com.xumumi.filter.constant
-com.xumumi.filter.impl
-com.xumumi.function
-com.xumumi.util

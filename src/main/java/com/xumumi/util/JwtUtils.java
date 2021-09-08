@@ -32,11 +32,11 @@ public enum JwtUtils {
      * @return 有效布尔值
      */
     public static boolean isValid(final String token, final String secret) {
-        final Algorithm algorithm = Algorithm.HMAC256(secret);
-        final String subject = getSubject(token);
-        final JWTVerifier build = JWT.require(algorithm).withSubject(subject).build();
         boolean result;
         try {
+            final Algorithm algorithm = Algorithm.HMAC256(secret);
+            final String subject = getSubject(token);
+            final JWTVerifier build = JWT.require(algorithm).withSubject(subject).build();
             build.verify(token);
             result = !isExpired(token);
         } catch (final JWTVerificationException ignored) {

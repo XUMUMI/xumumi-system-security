@@ -5,11 +5,12 @@ import com.xumumi.configure.config.BasicConfig;
 import com.xumumi.configure.config.TokenConfig;
 import com.xumumi.filter.AbstractJsonAuthenticationFilter;
 import com.xumumi.filter.JwtAuthenticationFilter;
-import com.xumumi.filter.impl.JwtAuthenticationFilterImpl;
 import com.xumumi.filter.JwtLoginFilter;
+import com.xumumi.filter.impl.JwtAuthenticationFilterImpl;
 import com.xumumi.filter.impl.JwtLoginFilterImpl;
 import org.apache.commons.lang.ArrayUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
@@ -31,6 +32,7 @@ import java.util.function.Function;
  * @author XUMUMI
  * @since 1.9
  */
+@ComponentScan("com.xumumi.*")
 public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
     @Autowired
     private BasicConfig basicConfig;
