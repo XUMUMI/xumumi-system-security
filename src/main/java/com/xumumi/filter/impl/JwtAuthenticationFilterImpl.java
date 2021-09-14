@@ -1,9 +1,11 @@
 package com.xumumi.filter.impl;
 
 import com.xumumi.configure.BaseJwtSecurityConfigurerAdapter;
-import com.xumumi.filter.constant.Number;
 import com.xumumi.filter.JwtAuthenticationFilter;
+import com.xumumi.filter.constant.Number;
 import com.xumumi.filter.constant.Parameter;
+import com.xumumi.filter.constant.Path;
+import com.xumumi.util.CookieUtils;
 import com.xumumi.util.JwtUtils;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -47,6 +49,10 @@ public final class JwtAuthenticationFilterImpl extends OncePerRequestFilter impl
      * 生成密钥回调函数
      */
     private final Function<? super HttpServletRequest, String> secretCallback;
+    /**
+     * 即将过期时间，Token 有效期小于该时长时刷新
+     */
+    private long expireDuration = Number.ONE_MINUTES_MILLISECONDS;
 
     /**
      * 构造函数
@@ -61,7 +67,7 @@ public final class JwtAuthenticationFilterImpl extends OncePerRequestFilter impl
      * {@link JwtAuthenticationFilter} 生成器
      *
      * @param secret 用于生成密钥的回调函数
-     * @return {@link JwtAuthenticationFilterImpl} 对象
+     * @return {@link JwtAuthenticationFilter} 对象
      */
     public static JwtAuthenticationFilter createJwtAuthenticationFilter(
             @NonNull final Function<? super HttpServletRequest, String> secret) {
@@ -71,24 +77,31 @@ public final class JwtAuthenticationFilterImpl extends OncePerRequestFilter impl
     /**
      * 执行验证
      *
-     * @param request     请求
-     * @param response    响应
-     * @param filterChain 过滤链
+     * @param httpServletRequest  请求
+     * @param httpServletResponse 响应
+     * @param filterChain         过滤链
      * @throws ServletException Servlet 异常
      * @throws IOException      读写异常
      */
     @Override
-    protected void doFilterInternal(@NonNull final HttpServletRequest request,
-                                    @NonNull final HttpServletResponse response,
+    protected void doFilterInternal(@NonNull final HttpServletRequest httpServletRequest,
+                                    @NonNull final HttpServletResponse httpServletResponse,
                                     final FilterChain filterChain)
             throws ServletException, IOException {
-        final Cookie cookie = WebUtils.getCookie(request, tokenName);
+        final Cookie cookie = WebUtils.getCookie(httpServletRequest, tokenName);
         final String token = null != cookie ? cookie.getValue() : null;
+        final String secret = secretCallback.apply(httpServletRequest);
         /* 对用 token 获取到的用户进行校验 */
-        final Authentication authentication = getAuthentication(token, request);
+        final Authentication authentication = getAuthentication(token, httpServletRequest);
         final SecurityContext context = SecurityContextHolder.getContext();
         context.setAuthentication(authentication);
-        filterChain.doFilter(request, response);
+        /* 刷新 token */
+        final String jwt = JwtUtils.refresh(token, expireDuration, secret);
+        if (Objects.nonNull(jwt)) {
+            final Cookie newToken = CookieUtils.generateCookie(tokenName, jwt, Path.ROOT, (int) expireDuration);
+            httpServletResponse.addCookie(newToken);
+        }
+        filterChain.doFilter(httpServletRequest, httpServletResponse);
     }
 
     /**
@@ -109,6 +122,16 @@ public final class JwtAuthenticationFilterImpl extends OncePerRequestFilter impl
     @Override
     public void setRoleParameter(final String parameter) {
         roleParameter = Objects.requireNonNullElse(parameter, roleParameter);
+    }
+
+    /**
+     * 自定义刷新 token 时间
+     *
+     * @param duration 剩余时长
+     */
+    @Override
+    public void setExpireDuration(final long duration) {
+        expireDuration = 0L == duration ? expireDuration : duration;
     }
 
     /**

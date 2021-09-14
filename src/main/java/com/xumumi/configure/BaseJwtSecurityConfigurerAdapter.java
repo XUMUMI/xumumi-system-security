@@ -32,6 +32,7 @@ import java.util.function.Function;
  * @author XUMUMI
  * @since 1.9
  */
+@SuppressWarnings({"SpringJavaAutowiredMembersInspection", "AbstractClassNeverImplemented"})
 @ComponentScan("com.xumumi.*")
 public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfigurerAdapter {
     @Autowired
@@ -48,6 +49,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
     private String tokenName;
     private String roleParameter;
     private String loginProcessingUrl;
+    private long expireDuration;
 
     /**
      * 配置过滤器设置方法，继承后通过重写该函数进行配置
@@ -68,7 +70,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
      * @param http 用于使用配置 http 信息
      * @throws Exception 重写异常
      */
-    @SuppressWarnings({"ChainedMethodCall", "ProhibitedExceptionDeclared"})
+    @SuppressWarnings("ChainedMethodCall")
     @Override
     protected final void configure(final HttpSecurity http) throws Exception {
         /* 获取配置 */
@@ -76,6 +78,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         loginProcessingUrl = basicConfig.getLoginProcessingUrl();
         /* 白名单 */
         String[] permitAll = authorizeConfig.getPermitAll();
+        //noinspection SuspiciousArrayCast
         permitAll = (String[]) ArrayUtils.add(permitAll, loginProcessingUrl);
         http.authorizeRequests().antMatchers(permitAll).permitAll();
         /* 需登录 */
@@ -101,6 +104,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         /* 配置过滤器 */
         secretCallback = tokenConfig.getSecretCallback();
         tokenName = tokenConfig.getTokenName();
+        expireDuration = tokenConfig.getExpireDuration();
         roleParameter = basicConfig.getRoleParameter();
         /* 配置登录过滤器 */
         final AuthenticationManager manager = authenticationManager();
@@ -155,6 +159,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
         authenticationFilter = JwtAuthenticationFilterImpl.createJwtAuthenticationFilter(secretCallback);
         authenticationFilter.setTokenName(tokenName);
         authenticationFilter.setRoleParameter(roleParameter);
+        authenticationFilter.setExpireDuration(expireDuration);
     }
 }
 

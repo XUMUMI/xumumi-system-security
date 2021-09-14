@@ -1,5 +1,6 @@
 package com.xumumi.configure.config;
 
+import com.xumumi.filter.impl.JwtAuthenticationFilterImpl;
 import com.xumumi.filter.impl.JwtLoginFilterImpl;
 import com.xumumi.function.CookiesCallback;
 import org.springframework.security.core.Authentication;
@@ -44,6 +45,14 @@ public interface TokenConfig {
     void setRmbValue(final String value);
 
     /**
+     * 自定义刷新 token 时间
+     *
+     * @param duration 剩余时长
+     * @see JwtAuthenticationFilterImpl#setExpireDuration(long)
+     */
+    void setExpireDuration(long duration);
+
+    /**
      * 获取记住我的超时时长，默认为 7 天
      *
      * @return 超时时长，单位毫秒
@@ -66,6 +75,14 @@ public interface TokenConfig {
      * @see JwtLoginFilterImpl#setRmbValue(String)
      */
     String getRmbValue();
+
+    /**
+     * 获取刷新 token 时间
+     *
+     * @return 字段名
+     * @see JwtAuthenticationFilterImpl#setExpireDuration(long)
+     */
+    long getExpireDuration();
 
     /* 字段 */
 

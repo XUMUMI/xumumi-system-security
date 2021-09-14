@@ -7,7 +7,7 @@ package com.xumumi.filter.constant;
  * @since 1.9
  */
 public enum Number {
-    /* 枚举 */;
+    /* 常量类 */;
     /**
      * 容器、数组等初始化默认容量
      */
@@ -20,4 +20,8 @@ public enum Number {
      * 5 * 60 * 1000 即 5 分钟
      */
     public static final long FIVE_MINUTES_MILLISECONDS = 300000L;
+    /**
+     * 60 * 1000 即 1 分钟
+     */
+    public static final long ONE_MINUTES_MILLISECONDS = 60000L;
 }

@@ -1,6 +1,7 @@
 package com.xumumi.configure.config.impl;
 
 import com.xumumi.configure.config.TokenConfig;
+import com.xumumi.filter.impl.JwtAuthenticationFilterImpl;
 import com.xumumi.filter.impl.JwtLoginFilterImpl;
 import com.xumumi.function.CookiesCallback;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ final class TokenConfigImpl implements TokenConfig {
 
     private long rmbExpireTime;
     private long defaultExpireTime;
+    private long expireDuration;
     private String rmbValue;
 
     /* 字段 */
@@ -74,6 +76,17 @@ final class TokenConfigImpl implements TokenConfig {
     }
 
     /**
+     * 自定义刷新 token 时间
+     *
+     * @param duration 剩余时长
+     * @see JwtAuthenticationFilterImpl#setExpireDuration(long)
+     */
+    @Override
+    public void setExpireDuration(final long duration) {
+        expireDuration = duration;
+    }
+
+    /**
      * 获取记住我的超时时长，默认为 7 天
      *
      * @return 超时时长，单位毫秒
@@ -104,6 +117,17 @@ final class TokenConfigImpl implements TokenConfig {
     @Override
     public String getRmbValue() {
         return rmbValue;
+    }
+
+    /**
+     * 获取刷新 token 时间
+     *
+     * @return 字段名
+     * @see JwtAuthenticationFilterImpl#setExpireDuration(long)
+     */
+    @Override
+    public long getExpireDuration() {
+        return expireDuration;
     }
 
     /* 字段 */

@@ -22,4 +22,11 @@ public interface JwtAuthenticationFilter extends Filter {
      * @param parameter 角色字段名
      */
     void setRoleParameter(final String parameter);
+
+    /**
+     * 自定义刷新 token 时间
+     *
+     * @param duration 剩余时长
+     */
+    void setExpireDuration(final long duration);
 }

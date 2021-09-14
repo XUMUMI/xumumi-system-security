@@ -23,7 +23,6 @@ import java.util.Objects;
 final class BasicConfigImpl implements BasicConfig {
     /* 参数 */
 
-    @SuppressWarnings("HardcodedFileSeparator")
     private String loginProcessingUrl = Path.LOGIN;
 
     /* 字段 */

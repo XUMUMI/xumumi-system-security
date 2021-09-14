@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.xumumi</groupId>
     <artifactId>xumumi-system-security</artifactId>
-    <version>1.0</version>
+    <version>1.0.1</version>
     <name>xumumi-system-security</name>
     <url>https://github.com/XUMUMI/xumumi-system-security</url>
     <description>基于 Spring Security 开发的 jwt 安全模块</description>
@@ -30,7 +30,7 @@
     <properties>
         <maven.compiler.source>9</maven.compiler.source>
         <maven.compiler.target>9</maven.compiler.target>
-        <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.release>9</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <commons-lang.version>2.6</commons-lang.version>
         <jwt.version>3.15.0</jwt.version>
@@ -107,6 +107,11 @@
                     </execution>
             </executions>
                 <version>3.2.0</version>
+                <configuration>
+                    <charset>UTF-8</charset>
+                    <encoding>UTF-8</encoding>
+                    <docencoding>UTF-8</docencoding>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

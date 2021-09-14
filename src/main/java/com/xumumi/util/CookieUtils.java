@@ -10,6 +10,8 @@ import javax.servlet.http.Cookie;
 public enum CookieUtils {
     /* 工具类 */;
 
+    public static final long MULTIPLE = 1000L;
+
     /**
      * 生成 cookie
      *
@@ -20,11 +22,11 @@ public enum CookieUtils {
      * @return cookie
      */
     public static Cookie generateCookie(final String cookieName, final String value,
-                                        final String uri, final int expiry) {
+                                        final String uri, final long expiry) {
         final Cookie cookie = new Cookie(cookieName, value);
         cookie.setHttpOnly(true);
         cookie.setPath(uri);
-        cookie.setMaxAge(expiry);
+        cookie.setMaxAge((int)(expiry / MULTIPLE));
         return cookie;
     }
 }
