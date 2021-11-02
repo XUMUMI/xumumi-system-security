@@ -100,7 +100,7 @@ public abstract class BaseJwtSecurityConfigurerAdapter extends WebSecurityConfig
             }
         });
         /* 其他 */
-        http.authorizeRequests().anyRequest().authenticated();
+        http.authorizeRequests().anyRequest().denyAll();
         /* 配置过滤器 */
         secretCallback = tokenConfig.getSecretCallback();
         tokenName = tokenConfig.getTokenName();

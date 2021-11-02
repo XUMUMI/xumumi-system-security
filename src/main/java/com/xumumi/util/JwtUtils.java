@@ -121,7 +121,9 @@ public enum JwtUtils {
     /**
      * 刷新令牌，如果令牌无效则返回 null
      *
-     * @param token 令牌
+     * @param token          令牌
+     * @param expireDuration 剩余过期时长
+     * @param secret         密钥
      * @return 新令牌
      */
     public static String refresh(final String token, final long expireDuration, @NonNull final String secret) {
